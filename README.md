@@ -1,6 +1,10 @@
 # Music Blog Cloud Platform ☁️🎵
 ### (Angular, Node.js, Express, AWS EC2, AWS Lambda, Amazon RDS, Amazon S3)
 
+> A full-stack publishing platform that combines a public music experience with a secure, event-driven content workflow.
+
+**Portfolio focus:** Angular · Node.js · AWS serverless workflows · relational data · media processing
+
 ## Contents
 
 - [Introduction](#introduction)
