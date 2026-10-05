@@ -25,10 +25,33 @@ npm install
 cp .env.example .env
 # Edit .env with your specific variables
 ```
-3. Start the local development server (which mocks the EC2 environment)
+3. Start the Angular client and API in separate terminals
 ```bash
-npm run start:dev
+npm run start
+npm run server:start
 ```
+
+## PIOS Governance and Secure Configuration
+
+This is an independently owned application repository registered by the PIOS
+workspace. Its service boundary, behavior, and change records are in
+[`manifest.yaml`](manifest.yaml), [`SYSTEM.md`](SYSTEM.md),
+[`BEHAVIOR.md`](BEHAVIOR.md), and [`DECISIONS.md`](DECISIONS.md).
+
+The API requires `DB_PASSWORD`, `JWT_SECRET`, and `ADMIN_PASSWORD`; it will
+not start with missing values or a default database password. Create an ignored
+local configuration file with `cp .env.example .env`, provide unique local
+secrets, then run:
+
+```bash
+npm run server:test
+npm run verify:config
+npm run server:start
+```
+
+`AWS_*` and `S3_BUCKET_NAME` are needed only for administrator media uploads.
+`DEEPL_API_KEY` is optional and keeps translation disabled when absent. Never
+commit `.env`, credentials, access tokens, or production data.
 
 ## Architecture
 
@@ -54,7 +77,7 @@ Privacy and Security
 
   - Secure Data Ingestion & API Queries: Data ingested by the Lambda scripts and EC2 instances is sanitized using parameterized queries via the pg library to prevent SQL injection attacks. The API layer utilizes strict CORS policies, rate limiting, and payload validation to ensure that only expected data shapes are processed.
 
-  - Session-Based Admin Authentication: The Headless CMS admin page is protected by a complete session-based login system. It utilizes secure, HttpOnly cookies and JSON Web Tokens (JWTs) to maintain session state. All CRUD operations targeting the RDS database or S3 buckets enforce authorization checks at the API gateway layer to verify that the requester holds an active, elevated admin session.
+  - Administrator Authentication: The Headless CMS exchanges the administrator password for an eight-hour HS256 JWT. All CMS CRUD operations, analytics, translation, and S3 upload routes enforce bearer-token authorization at the API layer. The separate visitor cookie is an opaque interaction identifier, not an administrator session.
 
 ## Improvements
 

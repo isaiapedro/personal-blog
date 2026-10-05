@@ -1,11 +1,12 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const { Pool } = require('pg');
 
 const pool = new Pool({
   user: process.env.DB_USER || 'postgres',
   host: process.env.DB_HOST || 'localhost',
   database: process.env.DB_NAME || 'postgres',
-  password: process.env.DB_PASSWORD || 'password',
+  // A database password is never optional.  Startup validation in config.js
+  // rejects a missing value before this pool is used.
+  password: process.env.DB_PASSWORD,
   port: process.env.DB_PORT || 5432,
   ssl: (process.env.DB_HOST && process.env.DB_HOST !== 'localhost' && process.env.DB_HOST !== '127.0.0.1') ? { rejectUnauthorized: false } : false,
   connectionTimeoutMillis: 5000,

@@ -1,6 +1,6 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const QRCode = require('qrcode');
 const os = require('os');
 const puppeteer = require('puppeteer');
@@ -20,12 +20,13 @@ const cookieParser = require('cookie-parser');
 const { v4: uuidv4 } = require('uuid');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { pool, initSchema } = require('./db');
+const { env, validateRuntimeConfig } = require('./config');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = env.PORT;
 
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+const allowedOrigins = env.ALLOWED_ORIGINS
+  ? env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
   : ['http://localhost:4200'];
 
 app.use(cors({
@@ -80,7 +81,7 @@ function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Access denied. No token provided.' });
-  jwt.verify(token, process.env.JWT_SECRET, (err) => {
+  jwt.verify(token, env.JWT_SECRET, { algorithms: ['HS256'] }, (err) => {
     if (err) return res.status(403).json({ error: 'Invalid or expired token.' });
     next();
   });
@@ -89,10 +90,12 @@ function authenticateToken(req, res, next) {
 // --- AUTH ROUTE ---
 app.post('/api/auth/login', loginLimiter, (req, res) => {
   const { password } = req.body;
-  if (!password || password !== process.env.ADMIN_PASSWORD) {
+  const supplied = Buffer.from(password || '');
+  const expected = Buffer.from(env.ADMIN_PASSWORD || '');
+  if (!password || supplied.length !== expected.length || !crypto.timingSafeEqual(supplied, expected)) {
     return res.status(401).json({ error: 'Invalid password.' });
   }
-  const token = jwt.sign({ role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '8h' });
+  const token = jwt.sign({ role: 'admin' }, env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '8h' });
   res.json({ token });
 });
 
@@ -996,12 +999,19 @@ app.get('/sitemap.xml', async (req, res) => {
 });
 
 // --- 4. SERVER START ---
-app.listen(port, () => {
-  console.log(`\n🚀 Backend Server is officially running!`);
-  console.log(`📡 Listening for Angular on: http://localhost:${port}\n`);
-});
+function start() {
+  validateRuntimeConfig();
+  const server = app.listen(port, () => {
+    console.log(`\nBackend server listening on http://localhost:${port}\n`);
+  });
 
-// Init DB schema in background — does not block server startup
-initSchema()
-  .then(() => console.log('✅ DB schema verified.'))
-  .catch((err) => console.error('⚠️  DB schema init failed (DB may be unreachable locally):', err.message));
+  // Schema initialization stays non-blocking, but configuration errors never do.
+  initSchema()
+    .then(() => console.log('Database schema verified.'))
+    .catch((err) => console.error('Database schema init failed:', err.message));
+  return server;
+}
+
+if (require.main === module) start();
+
+module.exports = { app, start };

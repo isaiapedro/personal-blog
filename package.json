@@ -6,7 +6,10 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "server:start": "node server/index.js",
+    "server:test": "node --test server/test/*.test.js",
+    "verify:config": "node server/verify-config.js"
   },
   "prettier": {
     "printWidth": 100,
