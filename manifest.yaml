@@ -1,0 +1,62 @@
+id: personal_blog
+type: service
+name: Personal Blog
+version: 1.0.0
+status: active
+owner: Pedro
+description: >
+  Independently versioned public music blog and administrator CMS. The service
+  stores only publication content and operational interaction data in its
+  external database; it does not read from or write to PIOS Personal records.
+tags: [public-web, music, cms, angular, nodejs]
+depends_on: [registry]
+consumes:
+  - external_postgresql
+  - external_object_storage
+  - optional_translation_provider
+exports:
+  - public_music_articles
+  - public_album_reviews
+  - authenticated_cms_api
+interfaces:
+  api: true
+  cli: false
+  webhook: false
+  routes:
+    - POST /api/auth/login
+    - GET /api/articles
+    - GET /api/reviews
+    - POST /api/upload
+    - POST /api/upload-audio
+    - GET /sitemap.xml
+runtime:
+  mode: persistent_web_service
+  implementation_repository: services/personal-blog
+  configuration_matrix: ../../../manifest.yaml
+permissions:
+  reads:
+    - registry
+  writes: []
+  prohibited_reads:
+    - personal/*
+  prohibited_writes:
+    - personal/*
+    - knowledge/*
+    - registry/*
+data_stores:
+  - PostgreSQL (external application database)
+  - Amazon S3 (external media object storage)
+authentication:
+  admin_api:
+    mechanism: JWT bearer token (HS256)
+    login_protection: rate limit of five attempts per fifteen minutes
+    required_environment:
+      - JWT_SECRET
+      - ADMIN_PASSWORD
+  browser:
+    cors: allow-list from ALLOWED_ORIGINS
+    visitor_cookie: non-authentication visitor identifier
+secrets:
+  local_file: .env
+  committed_example: .env.example
+  prohibited: [credentials, personal_records, production_secrets]
